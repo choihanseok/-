@@ -68,6 +68,16 @@ async function createContext({ withAuthorization = false } = {}) {
   return { database, serviceRepository, locationRepository, orderRepository, authorizationService, orderService };
 }
 
+async function grantCustomerCreate(ctx, accountId = 'customer-1') {
+  await ctx.authorizationService.assignRole({ accountId, roleCode: 'CUSTOMER' });
+  await ctx.authorizationService.grantPermission({
+    roleCode: 'CUSTOMER',
+    permissionCode: OrderPermission.CREATE,
+    action: PermissionAction.CREATE,
+    scope: PermissionScope.SELF,
+  });
+}
+
 test('creates one common Order using Service Registry identity and persists creation history', async (t) => {
   const ctx = await createContext();
   t.after(() => ctx.database.close());
@@ -144,8 +154,9 @@ test('authorization is deny-by-default and CUSTOMER SELF cannot read another cus
 test('SERVICE_ADMIN status permission is restricted to assigned service scope', async (t) => {
   const ctx = await createContext({ withAuthorization: true });
   t.after(() => ctx.database.close());
-  const driving = await ctx.orderService.createOrder({ serviceCode: 'DRIVING', customerAccountId: 'customer-1' });
-  const quick = await ctx.orderService.createOrder({ serviceCode: 'QUICK', customerAccountId: 'customer-1' });
+  await grantCustomerCreate(ctx);
+  const driving = await ctx.orderService.createOrder({ actorAccountId: 'customer-1', serviceCode: 'DRIVING', customerAccountId: 'customer-1' });
+  const quick = await ctx.orderService.createOrder({ actorAccountId: 'customer-1', serviceCode: 'QUICK', customerAccountId: 'customer-1' });
   await ctx.authorizationService.assignRole({ accountId: 'service-admin', roleCode: 'SERVICE_ADMIN', serviceId: 'service-driving' });
   await ctx.authorizationService.grantPermission({ roleCode: 'SERVICE_ADMIN', permissionCode: OrderPermission.CHANGE_STATUS, action: PermissionAction.UPDATE, scope: PermissionScope.SERVICE });
   await ctx.orderService.changeStatus(driving.orderId, 'REQUESTED', { actorAccountId: 'service-admin' });
@@ -155,7 +166,8 @@ test('SERVICE_ADMIN status permission is restricted to assigned service scope', 
 test('provider assignment requires explicit ASSIGN permission and supports ASSIGNED ownership later', async (t) => {
   const ctx = await createContext({ withAuthorization: true });
   t.after(() => ctx.database.close());
-  const order = await ctx.orderService.createOrder({ serviceCode: 'DRIVING', customerAccountId: 'customer-1' });
+  await grantCustomerCreate(ctx);
+  const order = await ctx.orderService.createOrder({ actorAccountId: 'customer-1', serviceCode: 'DRIVING', customerAccountId: 'customer-1' });
   await ctx.authorizationService.assignRole({ accountId: 'service-admin', roleCode: 'SERVICE_ADMIN', serviceId: 'service-driving' });
   await assert.rejects(() => ctx.orderService.assignProvider(order.orderId, 'provider-1', { actorAccountId: 'service-admin' }), /FORBIDDEN/);
   await ctx.authorizationService.grantPermission({ roleCode: 'SERVICE_ADMIN', permissionCode: OrderPermission.ASSIGN, action: PermissionAction.ASSIGN, scope: PermissionScope.SERVICE });
