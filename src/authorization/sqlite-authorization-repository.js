@@ -25,28 +25,40 @@ export class SqliteAuthorizationRepository extends AuthorizationRepository {
   }
 
   async saveAccountRole(assignment) {
-    this.database.prepare(`
-      DELETE FROM account_roles
+    const updated = this.database.prepare(`
+      UPDATE account_roles
+      SET status = ?, granted_at = ?, granted_by = ?
       WHERE account_id = ? AND role_code = ?
         AND COALESCE(service_id, '') = COALESCE(?, '')
         AND COALESCE(merchant_id, '') = COALESCE(?, '')
         AND COALESCE(distributor_id, '') = COALESCE(?, '')
-    `).run(assignment.accountId, assignment.roleCode, assignment.serviceId, assignment.merchantId, assignment.distributorId);
-
-    this.database.prepare(`
-      INSERT INTO account_roles (
-        account_id, role_code, service_id, merchant_id, distributor_id, status, granted_at, granted_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
+      assignment.status,
+      assignment.grantedAt.toISOString(),
+      assignment.grantedBy,
       assignment.accountId,
       assignment.roleCode,
       assignment.serviceId,
       assignment.merchantId,
       assignment.distributorId,
-      assignment.status,
-      assignment.grantedAt.toISOString(),
-      assignment.grantedBy,
     );
+
+    if (updated.changes === 0) {
+      this.database.prepare(`
+        INSERT INTO account_roles (
+          account_id, role_code, service_id, merchant_id, distributor_id, status, granted_at, granted_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        assignment.accountId,
+        assignment.roleCode,
+        assignment.serviceId,
+        assignment.merchantId,
+        assignment.distributorId,
+        assignment.status,
+        assignment.grantedAt.toISOString(),
+        assignment.grantedBy,
+      );
+    }
     return assignment;
   }
 
