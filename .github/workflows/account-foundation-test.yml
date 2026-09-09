@@ -1,12 +1,10 @@
-name: Account Foundation Test
+name: ZERO CALL Foundation Test
 
 on:
   push:
     branches:
-      - zc-task-20260909-001-account-foundation
+      - 'zc-task-*'
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
@@ -18,5 +16,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run Account Foundation tests
+      - name: Run ZERO CALL tests
         run: npm test
