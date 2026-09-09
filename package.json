@@ -1,0 +1,13 @@
+{
+  "name": "zero-call-account-foundation-test",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ZERO CALL Account Foundation test scaffold. Production framework/DBMS remain NEED_REVIEW.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
